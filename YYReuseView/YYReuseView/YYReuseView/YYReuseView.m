@@ -6,7 +6,6 @@
 //  Copyright © 2017年 HZYL_FM3. All rights reserved.
 //
 
-
 #import "YYReuseView.h"
 
 @interface YYReuseView ()<UIScrollViewDelegate>
@@ -31,8 +30,9 @@
 {
     if (self = [super initWithFrame:frame]) {
         
+        self.backgroundColor = [UIColor clearColor];
         [self addSubview:self.mainScrollView];
-     
+        
         _calculatePageIndex = NO;
         _reloadPage = NO;
         self.visiblePageViews = [NSMutableSet set];
@@ -66,6 +66,9 @@
         _mainScrollView.bounces = NO;
         _mainScrollView.decelerationRate = 1.0;
         
+        if (@available(iOS 11.0, *)) {
+            _mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        }
     }
     return _mainScrollView;
 }
@@ -155,17 +158,41 @@
     }
 }
 
-//加载pageIndex附近的page
+//加载pageIndex附近的page(前、后)
 - (void)loadNearbyPages
 {
     if (_pageIndex > 0) {
         //预加载前一个page
         [self loadPageWithIndex:_pageIndex-1];
     }
+    else
+    {
+        //当显示第一页的时候如果第3个view正在显示，将该view加入到缓存中并移除,否则reloadData代理不会执行
+        YYReusePageView *visiblePageView = [self checkPageViewIsShowWithIndex:2];
+        if (visiblePageView) {
+            if (self.reusablePageViews.count < 3) {
+                [self.reusablePageViews addObject:visiblePageView];
+            }
+            [self.visiblePageViews removeObject:visiblePageView];
+            [visiblePageView removeFromSuperview];
+        }
+    }
     
     if (_pageIndex+1 < _pageCount) {
         //预加载后一个page
         [self loadPageWithIndex:_pageIndex+1];
+    }
+    else
+    {
+        //当显示最后一页的时候如果倒数第3个view正在显示，将该view加入到缓存中并移除,否则reloadData代理不会执行
+        YYReusePageView *visiblePageView = [self checkPageViewIsShowWithIndex:_pageIndex-2];
+        if (visiblePageView) {
+            if (self.reusablePageViews.count < 3) {
+                [self.reusablePageViews addObject:visiblePageView];
+            }
+            [self.visiblePageViews removeObject:visiblePageView];
+            [visiblePageView removeFromSuperview];
+        }
     }
 }
 
@@ -234,11 +261,11 @@
 }
 
 /*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
+ // Only override drawRect: if you perform custom drawing.
+ // An empty implementation adversely affects performance during animation.
+ - (void)drawRect:(CGRect)rect {
+ // Drawing code
+ }
+ */
 
 @end
